@@ -21,6 +21,7 @@ function Stroke(opt) {
     this.thickness = number(opt.thickness, 1)
     this.join = opt.join || 'miter'
     this.cap = opt.cap || 'butt'
+    this.closed = opt.closed || false
     this._normal = null
     this._lastFlip = -1
     this._started = false
@@ -38,6 +39,13 @@ Stroke.prototype.build = function(points) {
 
     if (points.length <= 1)
         return complex
+
+    if (points.length > 2 && this.closed) {
+        var npoints = [points[points.length - 2]];
+        Array.prototype.push.apply(npoints, points);
+        npoints.push(points[0]);
+        points = npoints;
+    }
 
     var total = points.length
 
@@ -94,11 +102,11 @@ Stroke.prototype._seg = function(complex, index, last, cur, next, halfThick) {
     // now determine the type of join with next segment
 
     - round (TODO)
-    - bevel 
+    - bevel
     - miter
     - none (i.e. no next segment, use normal)
      */
-    
+
     if (!next) { //no next segment, simple extrusion
         //now reset normal to finish cap
         normal(this._normal, lineA)
@@ -121,7 +129,7 @@ Stroke.prototype._seg = function(complex, index, last, cur, next, halfThick) {
         var miterLen = computeMiter(tangent, miter, lineA, lineB, halfThick)
 
         // normal(tmp, lineA)
-        
+
         //get orientation
         var flip = (vec.dot(tangent, this._normal) < 0) ? -1 : 1
 
@@ -132,7 +140,7 @@ Stroke.prototype._seg = function(complex, index, last, cur, next, halfThick) {
                 bevel = true
         }
 
-        if (bevel) {    
+        if (bevel) {
             //next two points in our first segment
             vec.scaleAndAdd(tmp, cur, this._normal, -halfThick * flip)
             positions.push(vec.clone(tmp))
@@ -141,7 +149,7 @@ Stroke.prototype._seg = function(complex, index, last, cur, next, halfThick) {
 
 
             cells.push(this._lastFlip!==-flip
-                    ? [index, index+2, index+3] 
+                    ? [index, index+2, index+3]
                     : [index+2, index+1, index+3])
 
             //now add the bevel triangle
@@ -159,7 +167,7 @@ Stroke.prototype._seg = function(complex, index, last, cur, next, halfThick) {
             //next two points for our miter join
             extrusions(positions, cur, miter, miterLen)
             cells.push(this._lastFlip===1
-                    ? [index, index+2, index+3] 
+                    ? [index, index+2, index+3]
                     : [index+2, index+1, index+3])
 
             flip = -1
